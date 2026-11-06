@@ -60,12 +60,41 @@ streamlit run streamlit_app.py
 
 The app opens at http://localhost:8501. Type a ticker or company name and click **Run** to see the signals, a price and support chart, and the data tables. You can download every CSV on its own or all of them as a zip. Results are cached for 15 minutes.
 
+Use the sidebar to switch between the app's two pages:
+
+- **📈 Volume, support & technical** runs the three agents.
+- **🧭 Outside opinions** shows Wall Street analyst ratings and price targets. For each rating it shows the date it was predicted, the price that day, the target, and the date the target is meant to be reached. It can also search the web for AI and quant ratings.
+
+The analyst data is free. The AI web search is billed to an Anthropic API key, which can come from either of these:
+- A visitor pastes their own key in the sidebar. It is used for that session only.
+- You add these lines to the app's **Settings → Secrets** so that people who know the password can use your key:
+  ```toml
+  ANTHROPIC_API_KEY = "sk-ant-..."
+  APP_PASSWORD = "choose-a-password"
+  ```
+  If `APP_PASSWORD` isn't set, your key is used only when the app is opened on your own computer (localhost), so visitors to a public app can't spend it.
+
 ### Deploy free on Streamlit Community Cloud
 
 1. Push this repo to GitHub. Streamlit Community Cloud can deploy public repos, and private repos once you've given it access.
 2. Go to https://share.streamlit.io and sign in with GitHub.
 3. Click **Create app**, choose this repo and the `main` branch, and set the main file path to `streamlit_app.py`.
 4. Under **Advanced settings**, choose Python 3.12, then click **Deploy**. You get a public `*.streamlit.app` URL to share.
+
+## Outside opinions (analysts and AI ratings)
+
+`forcastAgent/outside_opinions_agent.py` collects what outside sources say about a stock:
+
+- **Wall Street analysts** (free, from Yahoo): buy, hold and sell counts, 12-month price targets, and rating changes in the last 60 days.
+- **Public AI and quant ratings, and online forecasts** (Claude with web search): a table of source, rating, stance, price target, horizon, date and link. A link that didn't come from the web search is marked "unverified".
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+python forcastAgent/outside_opinions_agent.py NVDA --csv
+python forcastAgent/outside_opinions_agent.py NVDA --no-ai     # analysts only: free, no API key needed
+```
+
+The AI part uses your Anthropic API key (Claude tokens plus web searches). It only reads public pages and reports other people's opinions without checking them.
 
 ## Running each agent on its own
 
