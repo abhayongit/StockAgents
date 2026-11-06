@@ -48,6 +48,21 @@ python run_pipeline.py HCLTECH.NS --outdir output
 | `<SYMBOL>_hourly_volume_peak_minutes_with_support.csv` | The peak-minutes data plus standard deviation and support price |
 | `<SYMBOL>_hourly_volume_peak_minutes_with_support_signals.csv` | The signal and how each % figure was worked out |
 
+## Web app
+
+```bash
+streamlit run streamlit_app.py
+```
+
+The app opens at http://localhost:8501. Type a ticker or company name and click **Run** to see the signals, a price and support chart, and the data tables. You can download every CSV on its own or all of them as a zip. Results are cached for 15 minutes.
+
+### Deploy free on Streamlit Community Cloud
+
+1. Push this repo to GitHub. Streamlit Community Cloud can deploy public repos, and private repos once you've given it access.
+2. Go to https://share.streamlit.io and sign in with GitHub.
+3. Click **Create app**, choose this repo and the `main` branch, and set the main file path to `streamlit_app.py`.
+4. Under **Advanced settings**, choose Python 3.12, then click **Deploy**. You get a public `*.streamlit.app` URL to share.
+
 ## Running each agent on its own
 
 ```bash
