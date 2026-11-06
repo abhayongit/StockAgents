@@ -43,6 +43,7 @@ Data source and caveats
 """
 
 import argparse
+import os
 import sys
 import numpy as np
 import pandas as pd
@@ -282,6 +283,55 @@ def print_report(symbol: str, table: pd.DataFrame, notional: bool, tz_name: str)
 # ----------------------------------------------------------------------------
 # 5. The agent loop
 # ----------------------------------------------------------------------------
+PEAK_COLS = ["max_sell_shares", "max_sell_price", "max_buy_shares", "max_buy_price"]
+
+
+def ensure_peak_columns(table: pd.DataFrame) -> pd.DataFrame:
+    """Always have the 4 peak-minute columns in the table (blank where there is no 1-minute data)."""
+    for col in PEAK_COLS:
+        if col not in table.columns:
+            table[col] = pd.array([pd.NA] * len(table), dtype="Int64") if "shares" in col else np.nan
+    return table
+
+
+def daily_summary(table: pd.DataFrame) -> pd.DataFrame:
+    """One row per day (same numbers as 'Daily totals' and the Day lines in the console) plus an AVERAGE row."""
+    rows = []
+    for date, g in table.groupby("date", sort=True):
+        d_open, d_close = g["open"].iloc[0], g["close"].iloc[-1]
+        rows.append({
+            "date": date,
+            "open": d_open, "high": g["high"].max(), "low": g["low"].min(), "close": d_close,
+            "price_chg_pct": round((d_close / d_open - 1) * 100, 2) if d_open else np.nan,
+            "total_volume": int(g["volume"].sum()),
+            "est_bought": int(g["est_buy"].sum()),
+            "est_sold": int(g["est_sell"].sum()),
+            "net_volume": int(g["est_buy"].sum() - g["est_sell"].sum()),
+            "busiest_hour_starts": g.loc[g["volume"].idxmax(), "hour_label"],
+        })
+    out = pd.DataFrame(rows)
+    if not out.empty:
+        avg = {"date": "AVERAGE"}
+        for c in ["total_volume", "est_bought", "est_sold", "net_volume"]:
+            avg[c] = int(out[c].mean())
+        out = pd.concat([out, pd.DataFrame([avg])], ignore_index=True)
+    return out
+
+
+def peak_table(table: pd.DataFrame) -> pd.DataFrame:
+    """The 'Peak minute inside each hour' console table, one row per hour, same headings as the console."""
+    if not set(PEAK_COLS) <= set(table.columns):
+        return pd.DataFrame()
+    t = table[["date", "hour_label"] + PEAK_COLS].rename(columns={
+        "hour_label": "Hour starting",
+        "max_sell_shares": "Max est. sold",
+        "max_sell_price": "sell price",
+        "max_buy_shares": "Max est. bought",
+        "max_buy_price": "buy price",
+    })
+    return t.reset_index(drop=True)
+
+
 def get_minute_safe(symbol: str) -> pd.DataFrame | None:
     try:
         return fetch_minute(symbol)
@@ -298,6 +348,8 @@ def get_table(query: str, days: int = 5, notional: bool = False, peaks: bool = T
     minute = get_minute_safe(symbol) if peaks else None
     table = summarize(fetch_hourly(symbol), days=days, notional=notional, minute_df=minute)
     if not table.empty:
+        if peaks:
+            ensure_peak_columns(table)
         table.insert(0, "symbol", symbol)
     return table
 
@@ -320,6 +372,10 @@ def run_once(query: str, days: int, notional: bool, csv: bool, interactive: bool
 
     minute = get_minute_safe(symbol) if peaks else None
     table = summarize(raw, days=days, notional=notional, minute_df=minute)
+    if peaks and not table.empty:
+        ensure_peak_columns(table)
+        if table["max_sell_shares"].isna().all():
+            print("  Note: no 1-minute data came back, so the 4 peak-minute columns will be blank.")
     tz_name = str(raw.index.tz) if raw.index.tz is not None else "exchange local time"
     print_report(symbol, table, notional, tz_name)
 
@@ -328,7 +384,18 @@ def run_once(query: str, days: int, notional: bool, csv: bool, interactive: bool
         to_save = table.copy()
         to_save.insert(0, "symbol", symbol)
         to_save.to_csv(path, index=False)
-        print(f"\nSaved {path}")
+        daily_path = os.path.splitext(path)[0] + "_daily.csv"
+        daily = daily_summary(table)
+        daily.insert(0, "symbol", symbol)
+        daily.to_csv(daily_path, index=False)
+        print(f"\nSaved {path}  (hourly rows, including the 4 peak-minute columns)")
+        print(f"Saved {daily_path}  (daily totals and average)")
+        peaks_df = peak_table(table)
+        if not peaks_df.empty and peaks_df["Max est. sold"].notna().any():
+            peaks_path = os.path.splitext(path)[0] + "_peak_minutes.csv"
+            peaks_df.insert(0, "symbol", symbol)
+            peaks_df.to_csv(peaks_path, index=False)
+            print(f"Saved {peaks_path}  (peak minute inside each hour)")
     return True
 
 
