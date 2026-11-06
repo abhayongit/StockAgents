@@ -1,11 +1,12 @@
 # StockAgents
 
-Two small Python agents that run one after the other:
+Three small Python agents that run one after the other:
 
 1. **Stock volume agent** (`volAgent/stock_volume_agent.py`) downloads hourly volume and peak-minute data for a stock from Yahoo Finance.
 2. **Support price predictor** (`forcastAgent/support_price_predictor.py`) reads that data and works out a Bullish, Bearish or Neutral signal and a support price for each hour.
+3. **Technical chart predictor** (`forcastAgent/technical_chart_predictor.py`) reads the last 2 weeks of the daily chart, works out the indicators (moving averages, MACD, RSI, Bollinger bands, ATR and trend), and gives a central estimate with 68% and 90% ranges for the price 3 and 5 trading days ahead. It also backtests its own method on the past ~120 trading days.
 
-`run_pipeline.py` runs both agents in order.
+`run_pipeline.py` runs all three agents in order.
 
 ## Requirements
 
@@ -47,6 +48,9 @@ python run_pipeline.py HCLTECH.NS --outdir output
 | `<SYMBOL>_hourly_volume_peak_minutes.csv` | The busiest buy and sell minute in each hour |
 | `<SYMBOL>_hourly_volume_peak_minutes_with_support.csv` | The peak-minutes data plus standard deviation and support price |
 | `<SYMBOL>_hourly_volume_peak_minutes_with_support_signals.csv` | The signal and how each % figure was worked out |
+| `<SYMBOL>_technical_forecast.csv` | Central estimate, 68% and 90% ranges and chance of a rise for each of the next 5 trading days |
+| `<SYMBOL>_technical_indicators.csv` | Each indicator's value, vote and reading |
+| `<SYMBOL>_technical_backtest.csv` | How the method's error compared with a "no change" guess, and how often the real price landed in the ranges |
 
 ## Web app
 
@@ -68,6 +72,7 @@ The app opens at http://localhost:8501. Type a ticker or company name and click 
 ```bash
 python volAgent/stock_volume_agent.py NVDA --csv
 python forcastAgent/support_price_predictor.py NVDA_hourly_volume_peak_minutes.csv
+python forcastAgent/technical_chart_predictor.py NVDA --csv
 ```
 
 ## Notes

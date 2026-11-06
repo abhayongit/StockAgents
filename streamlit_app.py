@@ -101,8 +101,38 @@ if "result" in st.session_state:
             chart = chart.set_index("time")[["highest_price", "lowest_price", "support_price"]]
             st.line_chart(chart)
 
-        tabs = st.tabs(["Signals", "Hourly volume", "Daily totals", "Peak minutes"])
-        for tab, suffix in zip(tabs, ["_signals.csv", "_hourly_volume.csv", "_daily.csv", "_peak_minutes.csv"]):
+        tf = read(files, "_technical_forecast.csv")
+        if tf is not None and not tf.empty:
+            st.subheader("Technical outlook (last 2 weeks of chart)")
+            first = tf.iloc[0]
+            t = st.columns(4)
+            t[0].metric("Last close", f"{first['last_close']:.2f}", help=f"on {first['last_date']}")
+            t[1].metric("Technical bias", first["technical_bias"], f"score {first['bias_score']:+.2f}",
+                        delta_color="off")
+            for col, h in zip(t[2:], (3, 5)):
+                row = tf[tf["trading_day"] == h]
+                if not row.empty:
+                    r = row.iloc[0]
+                    col.metric(f"In {h} trading days ({r['date']})", f"{r['central']:.2f}",
+                               f"{r['change_pct']:+.2f}%")
+                    col.caption(f"68%: {r['low_68']:.2f} – {r['high_68']:.2f}  \n"
+                                f"90%: {r['low_90']:.2f} – {r['high_90']:.2f}")
+            if first.get("central_method") == "no change":
+                r5 = tf.iloc[-1]
+                st.info("The 2-week trend did not beat a simple 'no change' guess when replayed on the last "
+                        f"~120 trading days, so the central estimate is the last close. (Trend alone would say "
+                        f"{r5['trend_only_central']:.2f} on day {int(r5['trading_day'])}.) The ranges are the "
+                        "useful part: they are sized so past prices landed inside them as often as stated.")
+            else:
+                st.info("The 2-week trend beat a 'no change' guess on the last ~120 trading days, so it is "
+                        "used, but the edge is small. Don't over-trust the central number.")
+
+        names = ["Signals", "Technical forecast", "Indicators", "Backtest", "Hourly volume", "Daily totals",
+                 "Peak minutes"]
+        suffixes = ["_signals.csv", "_technical_forecast.csv", "_technical_indicators.csv",
+                    "_technical_backtest.csv", "_hourly_volume.csv", "_daily.csv", "_peak_minutes.csv"]
+        tabs = st.tabs(names)
+        for tab, suffix in zip(tabs, suffixes):
             df = read(files, suffix)
             with tab:
                 if df is None:

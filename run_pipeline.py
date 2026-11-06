@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-Run the two agents in order:
+Run the three agents in order:
   1. volAgent/stock_volume_agent.py        -> writes <SYMBOL>_hourly_volume*.csv
   2. forcastAgent/support_price_predictor.py -> reads the _peak_minutes.csv, writes _with_support / _signals
+  3. forcastAgent/technical_chart_predictor.py -> 2-week chart outlook for the next 3 and 5 days
 
     python run_pipeline.py NVDA
     python run_pipeline.py NVDA AAPL MSFT --days 5 --outdir resources
@@ -18,25 +19,31 @@ sys.path.insert(0, os.path.join(ROOT, "forcastAgent"))
 
 import stock_volume_agent as sva  # noqa: E402
 import support_price_predictor as spp  # noqa: E402
+import technical_chart_predictor as tcp  # noqa: E402
 
 
 def run_for(symbol: str, days: int, outdir: str, window: int) -> bool:
-    print(f"\n=== [1/2] Stock volume agent: {symbol} ===")
+    print(f"\n=== [1/3] Stock volume agent: {symbol} ===")
     os.makedirs(outdir, exist_ok=True)
     base = os.path.join(outdir, f"{symbol.upper().replace('.', '_')}_hourly_volume")
     hourly_csv = base + ".csv"
     peaks_csv = base + "_peak_minutes.csv"
 
     if sva.main([symbol, "--days", str(days), "--out", hourly_csv]) != 0:
-        print(f"  Volume agent failed for {symbol}; skipping support predictor.")
-        return False
-    if not os.path.exists(peaks_csv):
-        print(f"  {peaks_csv} was not written (no 1-minute data?); skipping support predictor.")
+        print(f"  Volume agent failed for {symbol}; skipping the other agents.")
         return False
 
-    print(f"\n=== [2/2] Support price predictor: {symbol} ===")
-    rc = spp.main([peaks_csv, "--hourly", hourly_csv, "--window", str(window)])
-    return rc == 0
+    ok = True
+    if os.path.exists(peaks_csv):
+        print(f"\n=== [2/3] Support price predictor: {symbol} ===")
+        ok = spp.main([peaks_csv, "--hourly", hourly_csv, "--window", str(window)]) == 0
+    else:
+        print(f"  {peaks_csv} was not written (no 1-minute data?); skipping support predictor.")
+        ok = False
+
+    print(f"\n=== [3/3] Technical chart predictor: {symbol} ===")
+    ok = (tcp.main([symbol, "--csv", "--outdir", outdir]) == 0) and ok
+    return ok
 
 
 def main() -> int:
