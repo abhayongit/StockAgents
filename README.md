@@ -60,12 +60,13 @@ streamlit run streamlit_app.py
 
 The app opens at http://localhost:8501. Type a ticker or company name and click **Run** to see the signals, a price and support chart, and the data tables. You can download every CSV on its own or all of them as a zip. Results are cached for 15 minutes.
 
-Use the sidebar to switch between the app's two pages:
+Use the sidebar to switch between the app's three pages:
 
 - **📈 Volume, support & technical** runs the three agents.
 - **🧭 Outside opinions** shows Wall Street analyst ratings and price targets. For each rating it shows the date it was predicted, the price that day, the target, and the date the target is meant to be reached. It can also search the web for AI and quant ratings.
+- **📰 News outlook** collects recent headlines from Yahoo, Google News and the Seeking Alpha RSS feed. Claude scores the news mood, and plain math turns that into an expected path with an 80% range for the next 5 trading days. This page needs AI access, because every run calls Claude.
 
-The analyst data is free. The AI web search is billed to an Anthropic API key, which can come from either of these:
+The analyst data is free. The AI web search and the news outlook are billed to an Anthropic API key, which can come from either of these:
 - A visitor pastes their own key in the sidebar. It is used for that session only.
 - You add these lines to the app's **Settings → Secrets** so that people who know the password can use your key:
   ```toml

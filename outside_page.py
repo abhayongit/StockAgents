@@ -77,16 +77,24 @@ def _is_local() -> bool:
 
 
 def api_key_ui() -> str | None:
-    """Sidebar controls. Returns an API key to use, or None."""
+    """Sidebar controls shared by the pages that call Claude. Returns an API key to use, or None.
+    Once unlocked, the key is kept for this browser session only (so switching pages doesn't ask again)."""
     owner_key = _secret("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_API_KEY", "")
     password = _secret("APP_PASSWORD")
     with st.sidebar:
-        st.subheader("AI web research access")
-        st.caption("Wall Street analyst data is free. Searching the web for AI / quant ratings uses Claude "
-                   "and an Anthropic API key, billed per run.")
+        st.subheader("AI access (Claude)")
+        st.caption("Free data always works. The AI parts (web research, news reading) use an Anthropic "
+                   "API key and are billed per run.")
+        if st.session_state.get("ai_key"):
+            st.success(st.session_state.get("ai_key_source", "AI access unlocked."))
+            if st.button("Lock AI access", key="ai_lock"):
+                st.session_state.pop("ai_key", None)
+                st.rerun()
+            return st.session_state["ai_key"]
         if owner_key and password:
             entered = st.text_input("App password", type="password", key="oo_pw")
             if entered and entered == password:
+                st.session_state["ai_key"], st.session_state["ai_key_source"] = owner_key, "Using the app owner's API key."
                 st.success("Using the app owner's API key.")
                 return owner_key
             if entered:
@@ -95,8 +103,11 @@ def api_key_ui() -> str | None:
             st.success("Using the API key set on this computer.")
             return owner_key
         own = st.text_input("Or paste your own Anthropic API key", type="password", key="oo_key",
-                            help="Used only for this session to call Claude. Not saved or logged.")
-        return own.strip() or None
+                            help="Used only for this browser session to call Claude. Not saved or logged.")
+        if own.strip():
+            st.session_state["ai_key"], st.session_state["ai_key_source"] = own.strip(), "Using your own API key."
+            return own.strip()
+        return None
 
 
 # ----------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import pandas as pd
 import streamlit as st
 
 import run_pipeline as rp
+import news_page
 import outside_page
 
 sva = rp.sva  # stock volume agent module
@@ -158,7 +159,8 @@ def pipeline_page() -> None:
 
 
 # ----------------------------------------------------------------------------
-PAGES = {"📈 Volume, support & technical": pipeline_page, "🧭 Outside opinions": outside_page.render}
+PAGES = {"📈 Volume, support & technical": pipeline_page, "🧭 Outside opinions": outside_page.render,
+         "📰 News outlook": news_page.render}
 page = st.sidebar.radio("Page", list(PAGES), key="page")
 PAGES[page]()
 

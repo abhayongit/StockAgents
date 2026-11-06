@@ -238,14 +238,15 @@ Reply with ONLY a JSON object, no other text:
 }}"""
 
 
-def ask_claude(symbol: str, market: dict, news: list[dict], model: str) -> dict:
+def ask_claude(symbol: str, market: dict, news: list[dict], model: str, api_key: str | None = None) -> dict:
+    """api_key: pass one in (e.g. from a web app); otherwise ANTHROPIC_API_KEY is used."""
     try:
         import anthropic
     except ImportError:
         sys.exit("Missing dependency. Run: pip install anthropic")
     # Strip stray spaces, newlines and quote marks: a pasted key like ' "sk-ant-..." ' makes an invalid
     # request header, which the SDK reports as a vague "Connection error".
-    api_key = os.environ.get("ANTHROPIC_API_KEY", "").strip().strip("\"'").strip()
+    api_key = (api_key or os.environ.get("ANTHROPIC_API_KEY", "")).strip().strip("\"'").strip()
     if not api_key:
         sys.exit("Set ANTHROPIC_API_KEY first (create a key in the Anthropic Console).\n"
                  "In Jupyter:  import os; os.environ['ANTHROPIC_API_KEY'] = 'sk-ant-...'")
